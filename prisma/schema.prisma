@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String   @unique
+  passwordHash String
+  businessName String
+  createdAt    DateTime @default(now())
+
+  wallet  Wallet?
+  meters  Meter[]
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Decimal  @default(0)
+  updatedAt DateTime @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id])
+  transactions TopupTransaction[]
+}
+
+model Meter {
+  id          String   @id @default(uuid())
+  userId      String
+  meterNumber String   @unique
+  location    String
+  threshold   Decimal  @default(20)
+  isActive    Boolean  @default(true)
+  billerCode  String   @default("905")
+  paymentCode String   @default("90501")
+  createdAt   DateTime @default(now())
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  iotEvents    IotEvent[]
+  transactions TopupTransaction[]
+}
+
+model TopupTransaction {
+  id             String   @id @default(uuid())
+  meterId        String
+  walletId       String
+  amount         Decimal
+  status         String
+  interswitchRef String?
+  responseCode   String?
+  token          String?
+  tokenExpiry    String?
+  transactionId  String?
+  retrievalRef   String?
+  stan           String?
+  terminalId     String?
+  bankCode       String?
+  cardType       String?
+  createdAt      DateTime @default(now())
+
+  meter  Meter  @relation(fields: [meterId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
+}
+
+model IotEvent {
+  id          String   @id @default(uuid())
+  meterId     String
+  creditLevel Decimal
+  triggeredAt DateTime @default(now())
+
+  meter Meter @relation(fields: [meterId], references: [id])
+}
+
+model Notification {
+  id      String   @id @default(uuid())
+  userId  String
+  message String
+  channel String
+  sentAt  DateTime @default(now())
+}
