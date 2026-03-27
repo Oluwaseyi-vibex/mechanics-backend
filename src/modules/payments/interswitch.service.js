@@ -4,7 +4,7 @@ const baseURL = process.env.INTERSWITCH_BASE_URL;
 // "https://qa.interswitchng.com";
 const tokenURL =
   process.env.INTERSWITCH_TOKEN_URL ||
-  "https://sandbox.interswitchng.com/passport/oauth/token";
+  "https://passport-v2.k8.isw.la/passport/oauth/token";
 
 let cachedToken = null;
 let tokenExpiresAt = 0;

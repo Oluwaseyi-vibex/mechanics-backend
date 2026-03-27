@@ -1,5 +1,6 @@
 import { getMeterByNumber, listMeters } from "./meters.service.js";
 import { verifyMeter } from "./vtpass.service.js";
+import prisma from "../../config/prisma.js";
 
 const DISCO_SERVICE_IDS = {
   ikedc: "ikeja-electric",
@@ -15,7 +16,7 @@ const DISCO_SERVICE_IDS = {
   abedc: "aba-electric",
 };
 
-const isValidMeterNumber = (value) => /^\d{11}$/.test(value);
+const isValidMeterNumber = (value) => /^\d{11}(\d{2})?$/.test(value);
 
 export const getMeters = async (req, res) => {
   try {
@@ -31,7 +32,7 @@ export const getMeter = async (req, res) => {
   if (!isValidMeterNumber(meterNumber)) {
     return res.status(422).json({
       success: false,
-      message: "Invalid meterNumber format (11 digits required)",
+      message: "Invalid meterNumber format (11 or 13 digits required)",
     });
   }
 
@@ -43,6 +44,74 @@ export const getMeter = async (req, res) => {
         .json({ success: false, message: "Meter not found" });
     }
     res.json({ success: true, data: meter });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const updateMeterConfig = async (req, res) => {
+  const { meterNumber } = req.params;
+  if (!isValidMeterNumber(meterNumber)) {
+    return res.status(422).json({
+      success: false,
+      message: "Invalid meterNumber format (11 or 13 digits required)",
+    });
+  }
+
+  try {
+    const meter = await prisma.meter.findFirst({
+      where: { meterNumber, userId: req.userId },
+    });
+    if (!meter) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Meter not found" });
+    }
+
+    const updated = await prisma.meter.update({
+      where: { id: meter.id },
+      data: {
+        ...(req.body?.billerCode ? { billerCode: req.body.billerCode } : {}),
+        ...(req.body?.paymentCode ? { paymentCode: req.body.paymentCode } : {}),
+        ...(req.body?.threshold !== undefined
+          ? { threshold: req.body.threshold }
+          : {}),
+      },
+    });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const applyQaElectricityTestData = async (req, res) => {
+  const { meterNumber } = req.params;
+  if (!isValidMeterNumber(meterNumber)) {
+    return res.status(422).json({
+      success: false,
+      message: "Invalid meterNumber format (11 or 13 digits required)",
+    });
+  }
+
+  try {
+    const meter = await prisma.meter.findFirst({
+      where: { meterNumber, userId: req.userId },
+    });
+    if (!meter) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Meter not found" });
+    }
+
+    const updated = await prisma.meter.update({
+      where: { id: meter.id },
+      data: {
+        meterNumber: "12345678910",
+        billerCode: "051758901",
+        paymentCode: "051758901",
+      },
+    });
+    res.json({ success: true, data: updated });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -75,6 +144,21 @@ export const validateMeter = async (req, res) => {
       serviceID,
       type,
     });
+    const code = response?.data?.code;
+    const wrongBillersCode =
+      response?.data?.content?.WrongBillersCode === true;
+    const contentError = response?.data?.content?.error;
+    if ((code && code !== "000") || wrongBillersCode || contentError) {
+      return res.status(400).json({
+        success: false,
+        message:
+          contentError ||
+          response?.data?.content?.errors?.[0]?.message ||
+          "Meter validation failed",
+        data: response.data,
+        serviceID,
+      });
+    }
     res.json({ success: true, data: response.data, serviceID });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -89,6 +173,21 @@ export const validateIkedcMeter = async (req, res) => {
       serviceID: "ikeja-electric",
       type,
     });
+    const code = response?.data?.code;
+    const wrongBillersCode =
+      response?.data?.content?.WrongBillersCode === true;
+    const contentError = response?.data?.content?.error;
+    if ((code && code !== "000") || wrongBillersCode || contentError) {
+      return res.status(400).json({
+        success: false,
+        message:
+          contentError ||
+          response?.data?.content?.errors?.[0]?.message ||
+          "Meter validation failed",
+        data: response.data,
+        serviceID: "ikeja-electric",
+      });
+    }
     res.json({ success: true, data: response.data, serviceID: "ikeja-electric" });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

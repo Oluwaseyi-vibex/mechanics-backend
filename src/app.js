@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import authRouter from "./modules/auth/auth.routes.js";
 import paymentsRouter from "./modules/payments/payments.routes.js";
 import metersRouter from "./modules/meters/meters.routes.js";
+import iotRouter from "./modules/iot/iot.routes.js";
 dotenv.config();
 
 const app = express();
@@ -15,5 +16,6 @@ app.get("/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRouter);
 app.use("/api/payments", paymentsRouter);
 app.use("/api/meters", metersRouter);
+app.use("/api/iot", iotRouter);
 
 export default app;

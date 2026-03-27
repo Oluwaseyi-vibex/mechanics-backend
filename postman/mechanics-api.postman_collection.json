@@ -56,7 +56,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"businessName\": \"Demo Ventures\",\n  \"email\": \"owner@example.com\",\n  \"phone\": \"08012345678\",\n  \"password\": \"password123\",\n  \"meterNumber\": \"12345678901\"\n}"
+              "raw": "{\n  \"businessName\": \"Demo Ventures\",\n  \"email\": \"owner@example.com\",\n  \"phone\": \"08012345678\",\n  \"password\": \"password123\",\n  \"meterNumber\": \"12345678901\",\n  \"disco\": \"ikedc\",\n  \"meterType\": \"prepaid\"\n}"
             }
           }
         },
@@ -103,6 +103,21 @@
               "raw": "{{baseUrl}}/api/auth/me",
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "me"]
+            }
+          }
+        }
+        ,
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-email?token=PASTE_TOKEN",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "verify-email"],
+              "query": [
+                { "key": "token", "value": "PASTE_TOKEN" }
+              ]
             }
           }
         }
@@ -166,6 +181,44 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"pan\": \"5060990580000217499\",\n  \"pin\": \"1111\",\n  \"expiryYYMM\": \"2004\",\n  \"cvv2\": \"111\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Store Auth Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/auth-data/store",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "auth-data", "store"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authData\": \"encrypted_card_data_here\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Set Topup Amount",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/topup-amount",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "topup-amount"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10000\n}"
             }
           }
         },
@@ -280,6 +333,21 @@
             }
           }
         }
+        ,
+        {
+          "name": "Mark Transaction Failed",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/{{last_transaction_ref}}/mark-failed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "{{last_transaction_ref}}", "mark-failed"]
+            }
+          }
+        }
       ]
     },
     {
@@ -310,6 +378,39 @@
               "raw": "{{baseUrl}}/api/meters/12345678901",
               "host": ["{{baseUrl}}"],
               "path": ["api", "meters", "12345678901"]
+            }
+          }
+        },
+        {
+          "name": "Update Meter Config",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/meters/12345678901/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meters", "12345678901", "config"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentCode\": \"051758901\",\n  \"billerCode\": \"051758901\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Apply QA Electricity Test Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/meters/12345678901/apply-qa-electricity",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "meters", "12345678901", "apply-qa-electricity"]
             }
           }
         },
@@ -348,6 +449,30 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"meterNumber\": \"1111111111111\",\n  \"type\": \"prepaid\"\n}"
+            }
+          }
+        }
+      ]
+    }
+    ,
+    {
+      "name": "IoT (Mock)",
+      "item": [
+        {
+          "name": "Credit Update",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/iot/credit-update",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "iot", "credit-update"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterNumber\": \"12345678901\",\n  \"creditLevel\": 10\n}"
             }
           }
         }

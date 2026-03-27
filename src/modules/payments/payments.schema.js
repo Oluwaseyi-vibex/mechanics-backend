@@ -6,7 +6,9 @@ const amountSchema = z.preprocess(
 );
 
 export const purchaseSchema = z.object({
-  meterNumber: z.string().regex(/^\d{11}$/, "meterNumber must be 11 digits"),
+  meterNumber: z
+    .string()
+    .regex(/^\d{11}(\d{2})?$/, "meterNumber must be 11 or 13 digits"),
   amount: amountSchema,
   currency: z.literal("NGN").default("NGN"),
   authData: z.string().min(10),
@@ -16,7 +18,7 @@ export const purchaseSchema = z.object({
 });
 
 export const otpSchema = z.object({
-  paymentId: z.string().min(3),
+  paymentId: z.string().min(3).optional(),
   otp: z.string().min(4).max(8),
   transactionId: z.string().min(3).optional(),
   eciFlag: z.string().min(2).max(2).optional(),
@@ -31,7 +33,15 @@ export const statusQuerySchema = z.object({
 
 export const authDataSchema = z.object({
   pan: z.string().regex(/^\d{12,19}$/),
-  pin: z.string().regex(/^\d{4}$/),
+  pin: z.string().regex(/^\d{4}$/).optional(),
   expiryYYMM: z.string().regex(/^\d{4}$/),
   cvv2: z.string().regex(/^\d{3,4}$/),
+});
+
+export const storeAuthDataSchema = z.object({
+  authData: z.string().min(10),
+});
+
+export const topupAmountSchema = z.object({
+  amount: amountSchema,
 });

@@ -2,11 +2,20 @@ import {
   createPurchase,
   submitOtp,
   checkStatus,
+  getAllTransactions,
   getTransactionById,
+  markTransactionFailed,
+  markTransactionFailedByRef,
 } from "./payments.service.js";
-import { authDataSchema, statusQuerySchema } from "./payments.schema.js";
+import {
+  authDataSchema,
+  statusQuerySchema,
+  storeAuthDataSchema,
+  topupAmountSchema,
+} from "./payments.schema.js";
 import { buildAuthData } from "./authdata.service.js";
 import { getAccessToken } from "./interswitch.service.js";
+import prisma from "../../config/prisma.js";
 
 export const makePayment = async (req, res) => {
   try {
@@ -56,12 +65,6 @@ export const makePayment = async (req, res) => {
 export const verifyOtp = async (req, res) => {
   try {
     const transactionId = req.body?.transactionId || req.body?.paymentId;
-    if (!transactionId) {
-      return res.status(422).json({
-        success: false,
-        message: "transactionId or paymentId is required for OTP verification",
-      });
-    }
     console.log("Payments: otp verify request", {
       userId: req.userId,
       paymentId: req.body?.paymentId,
@@ -77,13 +80,37 @@ export const verifyOtp = async (req, res) => {
     });
     res.json({ success: true, ...data });
   } catch (err) {
-    const responseData = err?.response?.data;
+    const responseData = JSON.stringify(err?.response?.data, null, 2);
+    const errorCode = responseData?.errors?.[0]?.code;
     console.error("Payments: otp verify error", {
       message: err?.message,
       status: err?.response?.status,
       data: responseData,
-      dataRaw: responseData ? JSON.stringify(responseData, null, 2) : null,
+      dataRaw: responseData ? responseData : null,
+      // JSON.stringify(responseData, null, 2)
     });
+    if (errorCode === "06") {
+      await markTransactionFailedByRef({
+        userId: req.userId,
+        interswitchRef: req.body?.transactionRef,
+        reason: "OTP_MAX_FAILED",
+      });
+      return res.status(409).json({
+        success: false,
+        code: "06",
+        message:
+          "OTP max failed attempts exceeded. Transaction marked as FAILED. Please start a new payment.",
+        provider: responseData,
+      });
+    }
+    if (err?.response?.status === 401) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Bills Payment authorization failed. Check Bills client credentials, terminal ID, and whitelisting.",
+        provider: responseData,
+      });
+    }
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -129,6 +156,13 @@ export const generateAuthData = async (req, res) => {
     });
   }
 
+  if (!req.userId) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+
   const modulusHex = process.env.INTERSWITCH_PUBLIC_MODULUS;
   const exponentHex = process.env.INTERSWITCH_PUBLIC_EXPONENT;
   if (!modulusHex || !exponentHex) {
@@ -143,11 +177,25 @@ export const generateAuthData = async (req, res) => {
       userId: req.userId,
       panLast4: parsed.data.pan?.slice(-4),
       expiryYYMM: parsed.data.expiryYYMM,
+      hasPin: Boolean(parsed.data.pin),
     });
     const authData = buildAuthData({
       ...parsed.data,
       modulusHex,
       exponentHex,
+    });
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+    });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: { authData },
     });
     res.json({ success: true, authData });
   } catch (err) {
@@ -159,7 +207,6 @@ export const generateAuthData = async (req, res) => {
     res.status(400).json({ success: false, message: err.message });
   }
 };
-
 export const generateAccessToken = async (req, res) => {
   try {
     console.log("Payments: access token generate", { userId: req.userId });
@@ -181,11 +228,89 @@ export const generateAccessToken = async (req, res) => {
   }
 };
 
+export const storeAuthData = async (req, res) => {
+  const parsed = storeAuthDataSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(422).json({
+      success: false,
+      message: "Validation error",
+      errors: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    const updated = await prisma.user.updateMany({
+      where: { id: req.userId },
+      data: { authData: parsed.data.authData },
+    });
+    if (updated.count === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    res.json({ success: true, message: "Auth data stored" });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const setTopupAmount = async (req, res) => {
+  const parsed = topupAmountSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(422).json({
+      success: false,
+      message: "Validation error",
+      errors: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    const updated = await prisma.user.updateMany({
+      where: { id: req.userId },
+      data: { topupAmount: parsed.data.amount },
+    });
+    if (updated.count === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    res.json({ success: true, topupAmount: parsed.data.amount });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
 export const getPaymentById = async (req, res) => {
   try {
     const transaction = await getTransactionById({
       userId: req.userId,
       id: req.params.id,
+    });
+    res.json({ success: true, transaction });
+  } catch (err) {
+    res.status(404).json({ success: false, message: err.message });
+  }
+};
+
+export const getPayments = async (req, res) => {
+  try {
+    const transactions = await getAllTransactions({
+      userId: req.userId,
+    });
+    res.json({ success: true, transactions });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const markFailed = async (req, res) => {
+  try {
+    const transaction = await markTransactionFailed({
+      userId: req.userId,
+      id: req.params.id,
+      reason: "MANUAL_FAIL",
     });
     res.json({ success: true, transaction });
   } catch (err) {

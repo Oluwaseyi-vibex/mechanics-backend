@@ -31,6 +31,20 @@ Set these in your `.env` for Interswitch payments:
 - `INTERSWITCH_CLIENT_SECRET`
 - `INTERSWITCH_PUBLIC_MODULUS`
 - `INTERSWITCH_PUBLIC_EXPONENT`
+- `INTERSWITCH_TERMINAL_ID` (required for Bills Payment)
+- `INTERSWITCH_BILLS_BASE_URL` (optional, default `https://qa.interswitchng.com/quicktellerservice/api/v5`)
+- `INTERSWITCH_BILLS_AMOUNT_UNIT` (`KOBO` or `NAIRA`, default `KOBO`)
+- `INTERSWITCH_BILLS_CLIENT_ID`
+- `INTERSWITCH_BILLS_CLIENT_SECRET`
+- `INTERSWITCH_BILLS_TOKEN_URL` (e.g., `https://apps.qa.interswitchng.com/passport/oauth/token`)
+- `INTERSWITCH_BILLS_SCOPE` (default `profile`)
+
+Set these in your `.env` for email notifications:
+- `SMTP_HOST`
+- `SMTP_PORT` (e.g., `587`)
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM` (optional)
 
 ## Auth
 ### Register
@@ -43,8 +57,27 @@ Body:
   "email": "owner@example.com",
   "phone": "08012345678",
   "password": "password123",
-  "meterNumber": "12345678901"
+  "meterNumber": "12345678901",
+  "disco": "ikedc",
+  "meterType": "prepaid"
 }
+```
+
+Notes:
+- `disco` can be a short code (`ikedc`, `ekedc`, `aedc`, `kedco`, `jed`, `kaedco`, `eedc`, `ibedc`, `bedc`, `phed`, `abedc`) or a VTpass `serviceID`.
+- `meterType` is `prepaid` or `postpaid`.
+- If you omit `disco` or `meterType`, the server uses:
+  - `VTPASS_DEFAULT_DISCO` (default `ikedc`)
+  - `VTPASS_DEFAULT_METER_TYPE` (default `prepaid`)
+
+After register, the system sends a **verification email**. You must verify before login.
+
+### Verify Email
+`GET /api/auth/verify-email?token=...`
+
+Example:
+```
+{{baseUrl}}/api/auth/verify-email?token=PASTE_TOKEN
 ```
 
 ### Login
@@ -73,7 +106,7 @@ Headers:
 Headers:
 - `Authorization: Bearer {{token}}`
 
-Body (meter number must be 11 digits, amount is in kobo). Omit `transactionRef` to auto-generate a unique one:
+Body (meter number must be 11 or 13 digits, amount is in kobo). Omit `transactionRef` to auto-generate a unique one:
 ```json
 {
   "meterNumber": "12345678901",
@@ -128,6 +161,31 @@ Example:
 {{baseUrl}}/api/payments/{{last_transaction_ref}}
 ```
 
+### Get All Transactions
+`GET /api/payments`
+
+Headers:
+- `Authorization: Bearer {{token}}`
+
+Example:
+```
+{{baseUrl}}/api/payments
+```
+
+Response includes:
+- `transactions` (all transactions for the authenticated user, newest first)
+
+### Mark Transaction Failed
+`POST /api/payments/:id/mark-failed`
+
+Headers:
+- `Authorization: Bearer {{token}}`
+
+Example:
+```
+{{baseUrl}}/api/payments/{{last_transaction_ref}}/mark-failed
+```
+
 ### Transaction Status
 `GET /api/payments/status`
 
@@ -161,6 +219,33 @@ Body:
 
 Notes:
 - This endpoint generates `authData` using your Interswitch public key.
+- The generated authData is also stored on the user for auto top-up.
+
+### Store Auth Data
+`POST /api/payments/auth-data/store`
+
+Headers:
+- `Authorization: Bearer {{token}}`
+
+Body:
+```json
+{
+  "authData": "encrypted_card_data_here"
+}
+```
+
+### Set Topup Amount
+`POST /api/payments/topup-amount`
+
+Headers:
+- `Authorization: Bearer {{token}}`
+
+Body (amount in kobo):
+```json
+{
+  "amount": 10000
+}
+```
 
 ### Generate Access Token
 `POST /api/payments/token`
@@ -206,6 +291,35 @@ Example:
 {{baseUrl}}/api/meters/12345678901
 ```
 
+### Update Meter Config
+`PATCH /api/meters/:meterNumber/config`
+
+Headers:
+- `Authorization: Bearer {{token}}`
+
+Body:
+```json
+{
+  "paymentCode": "051758901",
+  "billerCode": "051758901"
+}
+```
+
+Notes:
+- Use test data from the Interswitch QA guide.
+
+### Apply QA Electricity Test Data
+`POST /api/meters/:meterNumber/apply-qa-electricity`
+
+Headers:
+- `Authorization: Bearer {{token}}`
+
+Behavior:
+- Updates meter to the QA test values:
+  - `meterNumber`: `12345678910`
+  - `paymentCode`: `051758901`
+  - `billerCode`: `051758901`
+
 ### Validate Meter (VTpass – all DisCos)
 `POST /api/meters/validate`
 
@@ -243,3 +357,21 @@ Body:
 
 Notes:
 - This endpoint always uses `serviceID: ikeja-electric`.
+
+## IoT (Mock)
+### Credit Update
+`POST /api/iot/credit-update`
+
+Body:
+```json
+{
+  "meterNumber": "12345678901",
+  "creditLevel": 10
+}
+```
+
+Behavior:
+- Stores an IoT event and updates meter `currentCredit`.
+- If `creditLevel <= threshold`, auto-topup is triggered using:
+  - user `authData`
+  - user `topupAmount`

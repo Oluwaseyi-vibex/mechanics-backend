@@ -26,3 +26,19 @@ export const me = async (req, res) => {
     res.status(404).json({ success: false, message: err.message });
   }
 };
+
+export const verifyEmail = async (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res
+      .status(422)
+      .json({ success: false, message: "Token is required" });
+  }
+
+  try {
+    const user = await authService.verifyEmail(String(token));
+    res.status(200).json({ success: true, message: "Email verified", data: user });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
