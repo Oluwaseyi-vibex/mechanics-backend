@@ -138,6 +138,7 @@ PORT=5000
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DB_NAME
 JWT_SECRET=your_jwt_secret
 APP_BASE_URL=http://localhost:5000
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 
 SMTP_HOST=your_smtp_host
 SMTP_PORT=587
@@ -169,6 +170,7 @@ VTPASS_DEFAULT_METER_TYPE=prepaid
 Notes:
 
 - `DATABASE_URL` must point to a running PostgreSQL instance.
+- `CORS_ORIGINS` accepts a comma-separated list of frontend origins allowed to call this API from the browser.
 - VTpass support exists in the codebase, but registration-time meter verification is currently disabled temporarily.
 - Some payment flows depend on live or sandbox provider credentials.
 

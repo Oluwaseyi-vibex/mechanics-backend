@@ -7,6 +7,61 @@ import iotRouter from "./modules/iot/iot.routes.js";
 dotenv.config();
 
 const app = express();
+const defaultAllowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+const configuredOrigins = (
+  process.env.CORS_ORIGINS ||
+  process.env.CORS_ORIGIN ||
+  process.env.FRONTEND_URL ||
+  ""
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins =
+  configuredOrigins.length > 0 ? configuredOrigins : defaultAllowedOrigins;
+
+app.use((req, res, next) => {
+  const requestOrigin = req.headers.origin;
+  const isAllowedOrigin =
+    !requestOrigin || allowedOrigins.includes(requestOrigin);
+
+  if (isAllowedOrigin) {
+    if (requestOrigin) {
+      res.header("Access-Control-Allow-Origin", requestOrigin);
+      res.header("Vary", "Origin");
+    }
+
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    );
+    res.header("Access-Control-Allow-Credentials", "true");
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+
+    return next();
+  }
+
+  if (requestOrigin) {
+    return res.status(403).json({
+      message:
+        "CORS blocked: this origin is not allowed. Set CORS_ORIGINS to include your frontend URL.",
+    });
+  }
+
+  return next();
+});
 
 app.use(express.json());
 
