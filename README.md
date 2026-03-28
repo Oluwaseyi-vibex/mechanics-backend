@@ -76,6 +76,7 @@ This project currently uses these Interswitch APIs:
   Used to vend prepaid electricity units.
 
 Notes:
+
 - `POST /api/payments/auth-data` is a project endpoint, not an Interswitch endpoint.
 - Auth data is generated locally in this backend with the configured Interswitch public key values.
 
@@ -138,7 +139,7 @@ PORT=5000
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DB_NAME
 JWT_SECRET=your_jwt_secret
 APP_BASE_URL=http://localhost:5000
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://nimble-sprinkles-0a724c.netlify.app/
 
 SMTP_HOST=your_smtp_host
 SMTP_PORT=587
