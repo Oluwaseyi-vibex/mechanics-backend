@@ -130,44 +130,6 @@ This lets the app connect people, meters, payments, and IoT events in one flow.
 npm install
 ```
 
-### 2. Configure environment variables
-
-Create a `.env` file in the project root and set at least:
-
-```env
-PORT=5000
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DB_NAME
-JWT_SECRET=your_jwt_secret
-APP_BASE_URL=http://localhost:5000
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://nimble-sprinkles-0a724c.netlify.app/
-
-SMTP_HOST=your_smtp_host
-SMTP_PORT=587
-SMTP_USER=your_smtp_user
-SMTP_PASS=your_smtp_password
-SMTP_FROM=your_from_email
-
-INTERSWITCH_BASE_URL=https://qa.interswitchng.com
-INTERSWITCH_TOKEN_URL=https://sandbox.interswitchng.com/passport/oauth/token
-INTERSWITCH_CLIENT_ID=your_client_id
-INTERSWITCH_CLIENT_SECRET=your_client_secret
-INTERSWITCH_PUBLIC_MODULUS=your_public_modulus
-INTERSWITCH_PUBLIC_EXPONENT=your_public_exponent
-INTERSWITCH_TERMINAL_ID=your_terminal_id
-INTERSWITCH_BILLS_BASE_URL=https://qa.interswitchng.com/quicktellerservice/api/v5
-INTERSWITCH_BILLS_CLIENT_ID=your_bills_client_id
-INTERSWITCH_BILLS_CLIENT_SECRET=your_bills_client_secret
-INTERSWITCH_BILLS_TOKEN_URL=https://apps.qa.interswitchng.com/passport/oauth/token
-INTERSWITCH_BILLS_SCOPE=profile
-INTERSWITCH_BILLS_AMOUNT_UNIT=KOBO
-
-VTPASS_BASE_URL=https://sandbox.vtpass.com
-VTPASS_API_KEY=your_vtpass_api_key
-VTPASS_SECRET_KEY=your_vtpass_secret_key
-VTPASS_DEFAULT_DISCO=ikedc
-VTPASS_DEFAULT_METER_TYPE=prepaid
-```
-
 Notes:
 
 - `DATABASE_URL` must point to a running PostgreSQL instance.
